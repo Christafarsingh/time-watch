@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Stopwatch</title>
+  <style>
+    /* Embedded style.css */
+    :root {
+      --font-family: 'Poppins', sans-serif;
+      --bg-gradient-light: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+      --bg-gradient-dark: linear-gradient(135deg, #2b2b2b 0%, #1a1a1a 100%);
+      --card-bg: rgba(255, 255, 255, 0.15);
+      --card-bg-dark: rgba(0, 0, 0, 0.35);
+      --glow-color: #00e5ff;
+      --text-color-light: #222;
+      --text-color-dark: #eee;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-gradient: var(--bg-gradient-dark);
+        --card-bg: var(--card-bg-dark);
+        --text-color: var(--text-color-dark);
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-gradient: var(--bg-gradient-light);
+        --text-color: var(--text-color-light);
+      }
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-family);
+      background: var(--bg-gradient);
+      display:flex; justify-content:center; align-items:center; min-height:100vh; color: var(--text-color);
+    }
+    .app-container { padding:1rem; width:100%; max-width:420px; }
+    .stopwatch-card { background: var(--card-bg); border-radius:20px; box-shadow:0 8px 32px rgba(31,38,135,0.37); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.18); padding:2rem 1.5rem; text-align:center; }
+    .timer-display { font-size:3rem; font-weight:600; letter-spacing:2px; margin-bottom:1.5rem; color:var(--glow-color); text-shadow:0 0 8px var(--glow-color); }
+    .button-group { display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center; margin-bottom:1rem; }
+    .control-btn { flex:1 1 40%; min-width:80px; padding:0.6rem 0.8rem; border:none; border-radius:12px; font-weight:500; cursor:pointer; transition:transform 0.15s ease, box-shadow 0.2s ease; color:#fff; }
+    .control-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .control-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.2); }
+    .primary{background:#ff416c;} .secondary{background:#3b82f6;} .danger{background:#ef4444;} .accent{background:#10b981;}
+    .laps-list { margin-top:1rem; max-height:150px; overflow-y:auto; text-align:left; padding-left:1.2rem; }
+    .laps-list li { margin-bottom:0.4rem; color:var(--text-color); font-size:0.9rem; }
+    @media (max-width:480px){ .timer-display{font-size:2.5rem;} .control-btn{flex:1 1 45%;} }
+  </style>
+</head>
+<body>
+  <main class="app-container">
+    <section class="stopwatch-card">
+      <div class="timer-display" id="timer">00:00.00</div>
+      <div class="button-group">
+        <button id="startBtn" class="control-btn primary">Start</button>
+        <button id="pauseBtn" class="control-btn secondary" disabled>Pause</button>
+        <button id="resetBtn" class="control-btn danger" disabled>Reset</button>
+        <button id="lapBtn" class="control-btn accent" disabled>Lap</button>
+        <button id="clearLapsBtn" class="control-btn danger" disabled>Clear Laps</button>
+      </div>
+      <ol class="laps-list" id="lapsList"></ol>
+    </section>
+  </main>
+  <script>
+    // Embedded script.js
+    const timerDisplay=document.getElementById('timer');
+    const startBtn=document.getElementById('startBtn');
+    const pauseBtn=document.getElementById('pauseBtn');
+    const resetBtn=document.getElementById('resetBtn');
+    const lapBtn=document.getElementById('lapBtn');
+    const clearLapsBtn=document.getElementById('clearLapsBtn');
+    const lapsList=document.getElementById('lapsList');
+    let startTimestamp=null, elapsed=0, rafId=null, lapCount=0;
+    function formatTime(ms){
+      const totalHundredths=Math.floor(ms/10);
+      const minutes=Math.floor(totalHundredths/6000);
+      const seconds=Math.floor((totalHundredths%6000)/100);
+      const hundredths=totalHundredths%100;
+      return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(hundredths).padStart(2,'0')}`;
+    }
+    function updateTimer(){
+      const now=performance.now();
+      const delta=now-startTimestamp;
+      timerDisplay.textContent=formatTime(elapsed+delta);
+      rafId=requestAnimationFrame(updateTimer);
+    }
+    function startTimer(){
+      startTimestamp=performance.now();
+      rafId=requestAnimationFrame(updateTimer);
+      startBtn.disabled=true; pauseBtn.disabled=false; resetBtn.disabled=false; lapBtn.disabled=false; clearLapsBtn.disabled=false;
+    }
+    function pauseTimer(){
+      cancelAnimationFrame(rafId);
+      const now=performance.now();
+      elapsed+=now-startTimestamp;
+      startBtn.disabled=false; pauseBtn.disabled=true;
+    }
+    function resetTimer(){
+      cancelAnimationFrame(rafId);
+      startTimestamp=null; elapsed=0; timerDisplay.textContent='00:00.00';
+      startBtn.disabled=false; pauseBtn.disabled=true; resetBtn.disabled=true; lapBtn.disabled=true; clearLapsBtn.disabled=true;
+      lapsList.innerHTML=''; lapCount=0;
+    }
+    function recordLap(){
+      lapCount++; const li=document.createElement('li'); li.textContent=`Lap ${lapCount}: ${timerDisplay.textContent}`; lapsList.prepend(li);
+    }
+    function clearLaps(){ lapsList.innerHTML=''; lapCount=0; }
+    startBtn.addEventListener('click',startTimer);
+    pauseBtn.addEventListener('click',pauseTimer);
+    resetBtn.addEventListener('click',resetTimer);
+    lapBtn.addEventListener('click',recordLap);
+    clearLapsBtn.addEventListener('click',clearLaps);
+    // Initialise UI state
+    resetTimer();
+  </script>
+</body>
+</html>
